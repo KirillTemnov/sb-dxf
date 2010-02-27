@@ -284,85 +284,50 @@ Parameters header, tables and blocks not using for now."
 ;; Drawing objects
 ;;--------------------------------------------------------------------------------
 (defclass dxf-object nil
-  ((layer-name
-    :initarg :layer-name :initform "0")
-   (elevation
-    :initarg :elevation :initform nil)
-   (thickness
-    :initarg :thickness :initform nil)
-   (linetype
-    :initarg :linetype :initform nil)
-   (color
-    :initarg :color :initform nil)
-   (object-type
-    :initarg :object-type :initform nil))
+  ((layer-name   :initarg :layer-name   :initform "0")
+   (elevation    :initarg :elevation    :initform nil)
+   (thickness    :initarg :thickness    :initform nil)
+   (linetype     :initarg :linetype     :initform nil)
+   (color        :initarg :color        :initform nil)
+   (object-type  :initarg :object-type  :initform nil))
   (:documentation "A common class, containing basic properties for drawing element (entities)."))
 
-(defclass dxf-line (dxf-object)
-  ((start-point
-    :initarg :start-point)
-   (end-point
-    :initarg :end-point)
-   (object-type
-    :initarg :object-type :initform 'LINE))
-  (:documentation "Class, representing a line. Sample of creating instance:
- (make-instance 'dxf-line :start-point '(0 0 0) :end-point '(100 100 0))"))
+(defmacro make-dxf-object (name parent obj-type attribs &optional (docs ""))
+  (push `(object-type ,obj-type) attribs)
+  `(defclass ,name (,parent)
+     ,(loop for attr in attribs collect
+	   (cond 
+	     ((listp attr)	      
+	      `(,(first attr) :initarg ,(intern (symbol-name (first attr)) :keyword) :initform ,(second attr)))
+	     (t
+	      `(,attr :initarg ,(intern (symbol-name attr) :keyword)))))
+     (:documentation ,docs)))
+
+(make-dxf-object dxf-line dxf-object 'LINE (start-point end-point)
+  "Class, representing a line. Sample of creating instance:
+ (make-instance 'dxf-line :start-point '(0 0 0) :end-point '(100 100 0))")
 
 ;; don't know if it's works. not exporting this class
-(defclass dxf-ray (dxf-object)
-  ((start-point
-    :initarg :start-point)
-   (direction-point
-    :initarg :direction-point)
-   (object-type
-    :initarg :object-type :initform 'RAY))
-  (:documentation "Class, representing a ray. Sample of creating instance:
-  (make-instance 'dxf-ray :start-point '(50 30 0) :direction-point '(0 0 0))"))
+(make-dxf-object dxf-ray dxf-object 'RAY (start-point direction-point)
+  "Class, representing a ray. Sample of creating instance:
+  (make-instance 'dxf-ray :start-point '(50 30 0) :direction-point '(0 0 0))")
 
-(defclass dxf-point (dxf-object)
-  ((the-point
-    :initarg :the-point)
-   (object-type
-    :initarg :object-type :initform 'POINT))
-  (:documentation "Class, representing a point. Sample of creating instance:
-  (make-instance 'dxf-point :the-point '(5 5 0))"))
+(make-dxf-object dxf-point dxf-object 'POINT (the-point)
+  "Class, representing a point. Sample of creating instance:
+  (make-instance 'dxf-point :the-point '(5 5 0))")
 
-(defclass dxf-circle (dxf-object)
-  ((center-point
-    :initarg :center-point)
-   (radius
-    :initarg :radius)
-   (object-type
-    :initarg :object-type :initform 'CIRCLE))
-  (:documentation "Class, representing a circle. Sample of creating instance:
-  (make-instance 'dxf-circle :center-point '(75 75 0) :radius 25 )"))
+(make-dxf-object dxf-circle dxf-object 'CIRCLE (center-point radius)
+  "Class, representing a circle. Sample of creating instance:
+  (make-instance 'dxf-circle :center-point '(75 75 0) :radius 25 )")
 
-(defclass dxf-arc (dxf-circle)
-  ((start-angle
-    :initarg :start-angle)
-   (end-angle
-    :initarg :end-angle)
-   (object-type
-    :initarg :object-type :initform 'ARC))
-  (:documentation "Class representing an arc. Angles set in degrees. Sample of creating instance:
-  (make-instance 'dxf-arc :center-point '(40 50 0) :radius 20 :start-angle 0 :end-angle 90)"))
+(make-dxf-object dxf-arc dxf-circle 'ARC (start-angle end-angle)
+  "Class representing an arc. Angles set in degrees. Sample of creating instance:
+  (make-instance 'dxf-arc :center-point '(40 50 0) :radius 20 :start-angle 0 :end-angle 90)")
 
 ;; this class is buggy, not works for now. not exporting this class
-(defclass dxf-aligned-dimension (dxf-object)
-  ((from-point-left
-    :initarg :from-point-left)
-   (from-point-right
-    :initarg :from-point-right)
-   (center-text-point
-    :initarg :center-text-point)
-   (base-point 
-    :initarg :base-point)
-   (dimension-value
-    :initarg :dimension-value :initform "<>")
-   (object-type
-    :initarg :object-type :initform 'DIMENSION))
-  (:documentation 
-"
+(make-dxf-object dxf-aligned-dimension dxf-object 'DIMENSION 
+    (from-point-left from-point-right center-text-point base-point (dimension-value "<>"))
+  "
 Point positions:
 		     |  (center-text-point)  |
 		     |<----------.---------->. (base-point)
@@ -371,8 +336,7 @@ Point positions:
  (from-point-left)   .                       . (from-point-right)
 Sample of creating instance:
  (make-instance 'dxf-aligned-dimension :base-point '(100 20 0) :center-text-point '(60 20 0) :from-point-left '(30 70 0) :from-point-right '(100 70 0))
-"))
-
+")
 
 ;;--------------------------------------------------------------------------------
 (defgeneric to-dxf (object)
