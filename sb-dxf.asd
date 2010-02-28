@@ -6,7 +6,7 @@
 (in-package :sb-dxf-system)
 
 (defsystem sb-dxf
-  :version "0.1.0"
+  :version "0.1.2"
   :licence "BSD"
   :description "sb-dxf"
   :long-description "Lisp implementation of dxf writer"
