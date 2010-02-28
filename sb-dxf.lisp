@@ -125,7 +125,6 @@
   ((error-element :initarg :error-element :reader error-element :initform nil))
   (:documentation "Error condition in process of rendering dxf file content.")
   (:report (lambda (condition stream)
-	     (declare (ignore condition))
 	     (format stream "Error rendering element : ~s ~%~%" (error-element condition)))))
 
 ;;--------------------------------------------------------------------------------
@@ -166,7 +165,14 @@
       
 (defun format-dxf (code value)
   "Format code and value in DXF format specification"
-  (format nil "~s~%~s~%" (dxf-get-number-by-code code) value))
+  (format nil "~a~%~a~%" (dxf-get-number-by-code code) value))
+
+(defun format-dxf-point (point coords)
+  "Format dxf point description. Point coord code names must be present in coords."
+  (concatenate 'string 
+	       (format-dxf (first coords)   (first point))
+	       (format-dxf (second coords)  (second point))
+	       (format-dxf (third coords)   (third point))))
 
 (defun dxf-render-element (elements)
   "render element(s) to dxf format.
@@ -396,51 +402,39 @@ Sample of creating instance:
 				(format-dxf 'begin-mark object-type)
 				result)))
     result))
-  
+
 (defmethod to-dxf ((object dxf-line))
-  (let ((p0 (slot-value object 'start-point))
-	 (p1 (slot-value object 'end-point)))
-    (concatenate 'string 
-		 ;; call parent class method before writing own properties
-		 (call-next-method)
-		 (format-dxf 'primary-x-coord (first p0))
-		 (format-dxf 'primary-y-coord (second p0))
-		 (format-dxf 'primary-z-coord (third p0))
-		 (format-dxf 'other-x-coord-1 (first p1))
-		 (format-dxf 'other-y-coord-1 (second p1))
-		 (format-dxf 'other-z-coord-1 (third p1)))))
+  (concatenate 'string 
+	       ;; call parent class method before writing own properties
+	       (call-next-method)
+	       (format-dxf-point (slot-value object 'start-point) 
+				 '(primary-x-coord primary-y-coord primary-z-coord))
+	       (format-dxf-point (slot-value object 'end-point)
+				 '(other-x-coord-1 other-y-coord-1 other-z-coord-1))))
 
 (defmethod to-dxf ((object dxf-ray))
-  (let ((p0 (slot-value object 'start-point))
-	 (p1 (slot-value object 'direction-point)))
-    (concatenate 'string 
-		 ;; call parent class method before writing own properties
-		 (call-next-method)
-		 (format-dxf 'primary-x-coord (first p0))
-		 (format-dxf 'primary-y-coord (second p0))
-		 (format-dxf 'primary-z-coord (third p0))
-		 (format-dxf 'other-x-coord-1 (first p1))
-		 (format-dxf 'other-y-coord-1 (second p1))
-		 (format-dxf 'other-z-coord-1 (third p1)))))
+  (concatenate 'string 
+	       ;; call parent class method before writing own properties
+	       (call-next-method)
+	       (format-dxf-point (slot-value object 'start-point)
+				 '(primary-x-coord primary-y-coord primary-z-coord))
+	       (format-dxf-point (slot-value object 'direction-point)
+				 '(other-x-coord-1 other-y-coord-1 other-z-coord-1))))
 
 (defmethod to-dxf ((object dxf-point))
-  (let ((p (slot-value object 'the-point)))
-    (concatenate 'string
-		 ;; call parent class method before writing own properties
-		 (call-next-method)
-		 (format-dxf 'primary-x-coord (first p))
-		 (format-dxf 'primary-y-coord (second p))
-		 (format-dxf 'primary-y-coord (third p)))))
+  (concatenate 'string
+	       ;; call parent class method before writing own properties
+	       (call-next-method)
+	       (format-dxf-point (slot-value object 'the-point)
+				 '(primary-x-coord primary-y-coord primary-z-coord))))
 
 (defmethod to-dxf ((object dxf-circle))
-  (let ((center (slot-value object 'center-point)))
-    (concatenate 'string
-		 ;; call parent class method before writing own properties
-		 (call-next-method)
-		 (format-dxf 'primary-x-coord (first center))
-		 (format-dxf 'primary-y-coord (second center))
-		 (format-dxf 'primary-z-coord (third center))
-		 (format-dxf 'floating-point-value-1 (slot-value object 'radius)))))
+  (concatenate 'string
+	       ;; call parent class method before writing own properties
+	       (call-next-method)
+	       (format-dxf-point (slot-value object 'center-point)
+				 '(primary-x-coord primary-y-coord primary-z-coord))
+	       (format-dxf 'floating-point-value-1  (slot-value object 'radius))))
 
 (defmethod to-dxf ((object dxf-arc))
   (concatenate 'string
@@ -450,6 +444,7 @@ Sample of creating instance:
 	       (format-dxf 'angle-2 (slot-value object 'end-angle))))
 
 ;;--------------------------------------------------------------------------------
+;; objects manager
 ;;--------------------------------------------------------------------------------
 (defclass dxf-objects-manager nil
   ((entities-list
@@ -469,7 +464,7 @@ directly and get more flexibility."))
   (:documentation "Reset manager state (and delete all objects) to default. Slot 
 file-to-save is not resets!"))
 
-(defgeneric flush (manager)
+(defgeneric flush-manager (manager)
   (:documentation "Save all objects to file."))
 ;;--------------------------------------------------------------------------------
 (defmethod create-manager (&key (filename "manager.dxf"))
@@ -490,5 +485,3 @@ file-to-save is not resets!"))
   (when (not (eq nil (slot-value manager 'entities-list)))
     (write-to-file (dxf-render-file (slot-value manager 'entities-list)) 
 		   (slot-value manager 'file-to-save))))
-
-
